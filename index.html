@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>UNO Party Scoreboard</title>
+<meta name="theme-color" content="#101114">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="UNO Party">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html{background:#101114}
+body{margin:0;background:#101114;color:#fff;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;padding-top:env(safe-area-inset-top,20px);padding-bottom:env(safe-area-inset-bottom,0px)}
+button,input{font:inherit}.app{max-width:760px;margin:auto;padding:18px 12px 36px}
+h1{text-align:center;margin:0;font-size:30px;line-height:1.15}.sub{text-align:center;color:#aaa;margin:5px 0 12px;font-size:14px}
+.controls{display:flex;gap:8px;margin:10px 0}.controls button{flex:1;border:0;border-radius:12px;padding:12px;font-weight:900}.add{background:#ffd400;color:#111}.new{background:#a82036;color:#fff}
+.mode{display:flex;gap:8px;justify-content:center;margin:8px 0 6px}.mode button{border:1px solid #666;background:transparent;color:#fff;border-radius:999px;padding:9px 15px;font-weight:900}.mode .active{background:#ffd400;color:#111;border-color:#ffd400}.modeDesc{text-align:center;color:#999;font-size:12px;line-height:1.35;margin-bottom:10px}
+.players{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.player{position:relative;background:#fff;color:#111;border-radius:17px;padding:10px;box-shadow:0 5px 18px #0007}.player.selected{outline:4px solid #ffd400}.player input{width:100%;border:0;border-bottom:2px solid #ddd;text-align:center;font-size:17px;font-weight:800;padding:4px;outline:0}.score{text-align:center;font-size:38px;font-weight:900;margin:4px;cursor:pointer}.roundPlus{font-size:17px;color:#777}.remove{position:absolute;right:8px;top:8px;border:0;border-radius:50%;width:24px;height:24px;font-weight:900}.select{width:100%;border:0;border-radius:10px;padding:9px;background:#111;color:#fff;font-weight:900}.select:disabled{opacity:.65}
+.status{text-align:center;font-size:17px;font-weight:900;min-height:25px;margin:12px 0}.selectedDisplay{text-align:center;font-weight:900;color:#ffd400;margin:5px 0 10px;min-height:20px}
+.panel{background:#1d1f24;border-radius:18px;padding:14px;margin-top:12px}h2{font-size:18px;margin:0 0 10px}.note{font-size:12px;color:#999;line-height:1.35;margin-top:9px}
+.cards{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}.card{border:0;background:#27292f;border-radius:14px;padding:6px;box-shadow:0 5px 14px #0007;cursor:pointer;color:#fff}.card:active{transform:scale(.96)}.card img{display:block;width:100%;aspect-ratio:.66;object-fit:contain;border-radius:8px;background:#333}.card .name{font-size:12px;font-weight:900;margin-top:6px;text-align:center;line-height:1.1}.card .pts{font-size:16px;font-weight:1000;color:#ffd400;text-align:center;margin-top:2px}
+.nums{display:grid;grid-template-columns:repeat(5,1fr);gap:7px}.nums button,.roundBtns button{border:0;border-radius:10px;padding:11px;font-weight:900;font-size:17px}.round{text-align:center;font-size:24px;font-weight:900}.roundBtns{display:flex;gap:8px;margin-top:10px}.roundBtns button{flex:1}.finish{width:100%;margin-top:10px;border:0;border-radius:12px;padding:13px;background:#ffd400;color:#111;font-weight:1000}.finish.secondary{background:#eee}
+.history .row{display:grid;grid-template-columns:42px 1fr 1.7fr;padding:8px 0;border-bottom:1px solid #333;font-size:13px;gap:6px}.history .row:last-child{border-bottom:0}
+@media(max-width:430px){.app{padding-left:10px;padding-right:10px}.cards{gap:5px}.card{padding:4px}.card .name{font-size:10px}.card .pts{font-size:13px}.players{gap:8px}}
+</style>
+</head>
+<body>
+<div class="app">
+<h1>🃏 UNO PARTY!</h1>
+<div id="scoringSubtitle" class="sub">Official scoring: the winner receives all losing-hand points.</div>
+<div class="sub">6–16 player scoreboard • First to 500</div>
+<div class="controls"><button class="add" id="addPlayerBtn">＋ Add player</button><button class="new" id="newGameBtn">New game</button></div>
+<div class="mode"><button id="officialModeBtn" type="button">Official scoring</button><button id="alternativeModeBtn" type="button">Alternative scoring</button></div>
+<div id="modeDescription" class="modeDesc">Official: winner receives all losing-hand points. Alternative: each player keeps the points from their own hand.</div>
+<div class="status" id="status">Select the round winner</div><div class="selectedDisplay" id="selectedPlayerDisplay">No player selected</div>
+<div class="players" id="players"></div>
+
+<div class="panel"><h2>Score cards left in the selected hand</h2>
+<div class="cards" id="cards"></div>
+<div class="note">Party action cards: Draw Two, Skip, Reverse and Point Taken = 20 points. Wild, Wild Draw Four, Wild Pile Up and Wild Drawn Together = 50 points.</div></div>
+
+<div class="panel"><h2>Number cards</h2><div class="nums" id="nums"></div></div>
+
+<div class="panel"><div class="round">Selected hand: <span id="round">0</span></div><div id="lastCard" style="text-align:center;color:#aaa;font-size:14px;font-weight:800;margin-top:4px;min-height:20px">Last added: —</div>
+<div class="roundBtns"><button id="undoBtn">↩ Undo</button><button id="clearBtn">Clear</button></div>
+<button class="finish" id="finishHandBtn">✓ ADD HAND</button></div>
+
+<div class="panel"><h2>Round history</h2><div class="history" id="history">No completed rounds yet.</div></div>
+</div>
+<script>
+const CARD_DEFS=[
+ {slug:'draw-two',name:'Draw Two',points:20},
+ {slug:'skip',name:'Skip',points:20},
+ {slug:'reverse',name:'Reverse',points:20},
+ {slug:'wild',name:'Wild',points:50},
+ {slug:'point-taken',name:'Point Taken',points:20},
+ {slug:'wild-pile-up',name:'Wild Pile Up',points:50},
+ {slug:'wild-drawn-together',name:'Wild Drawn Together',points:50},
+ {slug:'wild-draw-four',name:'Wild Draw Four',points:50}
+];
+let players=[{name:'P1',score:0},{name:'P2',score:0},{name:'P3',score:0},{name:'P4',score:0},{name:'P5',score:0},{name:'P6',score:0}],winner=null,selectedPlayer=null,round=0,stack=[],history=[],roundHands={},lastCard='—',scoringMode='official';
+const KEY='unoPartyGame_v1';
+function escapeHtml(s){return String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
+function saveState(){try{localStorage.setItem(KEY,JSON.stringify({players,winner,selectedPlayer,round,stack,history,roundHands,lastCard,scoringMode}))}catch(e){}}
+function renderPlayers(){
+ const el=document.getElementById('players');
+ el.innerHTML=players.map((p,i)=>{
+  const isWinner=winner===i, scored=roundHands[i]!==undefined;
+  const winnerButton=isWinner?'<button class="select" disabled>ROUND WINNER • 0 PTS</button>':`<button class="select select-winner-btn" data-player="${i}">SELECT WINNER</button>`;
+  const altButton=scoringMode==='alternative'&&!isWinner?`<button class="select score-hand-btn" data-player="${i}" style="margin-top:6px" ${scored?'disabled':''}>${scored?'HAND SCORED ✓':'SCORE THIS HAND'}</button>`:'';
+  const recorded='';
+  return `<div class="player ${isWinner?'selected':''}">
+   <button class="remove remove-btn" data-player="${i}" ${players.length<=2?'disabled':''}>×</button>
+   <input value="${escapeHtml(p.name)}" data-name="${i}" aria-label="Player ${i+1} name">
+   <div class="score" data-score-player="${i}">${p.score}${selectedPlayer===i&&round?` <span class="roundPlus">(+${round})</span>`:''}</div>
+   ${winnerButton}${altButton}${recorded}
+  </div>`;
+ }).join('');
+ el.querySelectorAll('.remove-btn').forEach(b=>b.addEventListener('click',()=>removePlayer(Number(b.dataset.player))));
+ el.querySelectorAll('.select-winner-btn').forEach(b=>b.addEventListener('click',()=>selectWinner(Number(b.dataset.player))));
+ el.querySelectorAll('.score-hand-btn').forEach(b=>b.addEventListener('click',()=>selectScoredPlayer(Number(b.dataset.player))));
+ el.querySelectorAll('[data-score-player]').forEach(b=>b.addEventListener('click',()=>{
+   const i=Number(b.dataset.scorePlayer);
+   if(scoringMode==='official'&&winner!==null&&i!==winner)selectScoredPlayer(i);
+ }));
+ el.querySelectorAll('input[data-name]').forEach(x=>{
+  x.addEventListener('change',()=>{const i=Number(x.dataset.name);players[i].name=x.value.trim()||('P'+(i+1));renderAll()});
+  x.addEventListener('keydown',e=>{
+   if(e.key==='Enter'){e.preventDefault();const i=Number(x.dataset.name);players[i].name=x.value.trim()||('P'+(i+1));
+    if(i<players.length-1){renderPlayers();const next=document.querySelector(`input[data-name="${i+1}"]`);if(next){next.focus();next.select()}}
+    else{x.blur();renderAll()}
+   }
+  });
+ });
+}
+function renderCards(){
+ const el=document.getElementById('cards');el.innerHTML='';
+ CARD_DEFS.forEach(c=>{const b=document.createElement('button');b.className='card';b.type='button';
+  const img=document.createElement('img');img.src=c.slug+'.png';img.alt=c.name+' card';
+  const n=document.createElement('div');n.className='name';n.textContent=c.name;
+  const p=document.createElement('div');p.className='pts';p.textContent='+'+c.points;
+  b.append(img,n,p);b.addEventListener('click',()=>addCard(c.points,c.name));el.appendChild(b);
+ });
+}
+function renderNumbers(){const el=document.getElementById('nums');el.innerHTML='';for(let n=0;n<=9;n++){const b=document.createElement('button');b.type='button';b.textContent=n;b.addEventListener('click',()=>addScore(n));el.appendChild(b)}}
+function setStatus(t){document.getElementById('status').textContent=t}
+function selectWinner(i){
+ if(winner!==null||roundHandsCount()>0||round>0){alert('Finish or clear the current round before changing the winner.');return}
+ winner=i;round=0;stack=[];lastCard='—';
+ const next=nextUnscoredLoser();selectedPlayer=next;
+ setStatus(next>=0?'Adding cards to '+players[next].name+"'s hand":'All losing hands scored.');renderAll();
+}
+function selectScoredPlayer(i){
+ if(winner===null){alert('Select the round winner first.');return}
+ if(i===winner){alert('The round winner scores 0. Select another player.');return}
+ if(roundHands[i]!==undefined){alert('That hand has already been scored for this round.');return}
+ selectedPlayer=i;round=0;stack=[];lastCard='—';setStatus("Adding cards to "+players[i].name+"'s hand");renderAll();
+}
+function nextUnscoredLoser(){if(winner===null)return -1;return players.findIndex((p,i)=>i!==winner&&roundHands[i]===undefined)}
+function roundHandsCount(){return Object.keys(roundHands).length}
+function addCard(v,name){if(!ensureSelected())return;round+=v;stack.push({value:v,label:name+' (+'+v+')'});lastCard=name+' (+'+v+')';renderAll()}
+function addScore(v){if(!ensureSelected())return;round+=v;stack.push({value:v,label:'Number '+v+' (+'+v+')'});lastCard='Number '+v+' (+'+v+')';renderAll()}
+function ensureSelected(){if(selectedPlayer===null){alert('Select a player first.');return false}return true}
+function undo(){if(stack.length){stack.pop();round=stack.reduce((s,x)=>s+x.value,0);lastCard=stack.length?stack[stack.length-1].label:'—';renderAll()}}
+function clearRound(){round=0;stack=[];lastCard='—';renderAll()}
+function finishHand(){
+ if(selectedPlayer===null){alert('Select a player first.');return}
+ if(stack.length===0){alert('Add at least one card or number first.');return}
+ const i=selectedPlayer;roundHands[i]=round;
+ if(scoringMode==='alternative')players[i].score+=round;
+ round=0;stack=[];lastCard='—';
+ const next=nextUnscoredLoser();
+ if(next>=0){selectedPlayer=next;setStatus("Adding cards to "+players[next].name+"'s hand");renderAll();return}
+ selectedPlayer=null;renderAll();completeRound();
+}
+function completeRound(){
+ if(winner===null)return;
+ const loserScores=players.map((p,i)=>i===winner?null:{name:p.name,points:Number(roundHands[i]||0)});
+ if(scoringMode==='official')players[winner].score+=loserScores.reduce((s,v)=>s+(v?v.points:0),0);
+ const roundWinnerName=players[winner].name;
+ history.push({winnerName:roundWinnerName,points:loserScores,mode:scoringMode});
+ const gameWinnerIndex=scoringMode==='official'
+   ? (players[winner].score>=500?winner:null)
+   : (players.some(p=>p.score>=500)?players.reduce((best,p,i)=>p.score<players[best].score?i:best,0):null);
+ winner=null;selectedPlayer=null;roundHands={};round=0;stack=[];lastCard='—';
+ setStatus(gameWinnerIndex!==null?'🏆 '+players[gameWinnerIndex].name+' wins!':'Select the next round winner');
+ renderAll();
+}
+function renderHistory(){
+ const el=document.getElementById('history');if(!history.length){el.textContent='No completed rounds yet.';return}
+ el.innerHTML=history.map((r,i)=>{const parts=(r.points||[]).filter(Boolean).map(x=>escapeHtml(x.name)+' +'+x.points).join(' • ');return `<div class="row"><b>R${i+1}</b><span>${escapeHtml(r.winnerName)} won</span><span>${parts||'No points'}</span></div>`}).join('');
+}
+function setScoringMode(mode){if(winner!==null||selectedPlayer!==null||roundHandsCount()||round>0){alert('Finish the current round before changing scoring mode.');return}scoringMode=mode;renderAll()}
+function updateModeUI(){
+ const official=scoringMode==='official';document.getElementById('officialModeBtn').classList.toggle('active',official);document.getElementById('alternativeModeBtn').classList.toggle('active',!official);
+ document.getElementById('scoringSubtitle').textContent=official?'Official scoring: the winner receives all losing-hand points.':'Alternative scoring: each player keeps the points from their own hand.';
+ document.getElementById('modeDescription').textContent=official?'Official: winner receives all losing-hand points. Alternative: each player keeps the points from their own hand.':'Alternative: each player keeps their own hand points. When any player reaches 500, the lowest total wins.';
+}
+function renderAll(){renderPlayers();renderCards();renderNumbers();renderHistory();updateModeUI();document.getElementById('round').textContent=round;document.getElementById('lastCard').textContent='Last added: '+lastCard;document.getElementById('selectedPlayerDisplay').textContent=selectedPlayer===null?'No player selected':'Adding to: '+players[selectedPlayer].name;saveState()}
+function addPlayer(){if(players.length>=16){alert('UNO Party supports up to 16 players.');return}if(winner!==null||selectedPlayer!==null||roundHandsCount()||round){alert('Finish the current round before adding a player.');return}players.push({name:'P'+(players.length+1),score:0});renderAll()}
+function removePlayer(i){if(players.length<=2)return;if(winner!==null||selectedPlayer!==null||roundHandsCount()||round){alert('Finish the current round before removing a player.');return}if(confirm('Remove '+players[i].name+'?')){players.splice(i,1);renderAll()}}
+function newGame(){if(confirm('Start a new game and clear all scores?')){players=players.map((p,i)=>({name:p.name||'P'+(i+1),score:0}));winner=null;selectedPlayer=null;round=0;stack=[];history=[];roundHands={};lastCard='—';scoringMode='official';setStatus('Select the round winner');renderAll()}}
+function loadState(){try{const s=JSON.parse(localStorage.getItem(KEY)||'null');if(!s)return;if(Array.isArray(s.players)&&s.players.length>=2&&s.players.length<=16)players=s.players;winner=s.winner??null;selectedPlayer=s.selectedPlayer??null;round=Number(s.round)||0;stack=Array.isArray(s.stack)?s.stack:[];history=Array.isArray(s.history)?s.history:[];roundHands=s.roundHands&&typeof s.roundHands==='object'?s.roundHands:{};lastCard=s.lastCard||'—';scoringMode=s.scoringMode==='alternative'?'alternative':'official';}catch(e){localStorage.removeItem(KEY)}}
+
+document.getElementById('addPlayerBtn').addEventListener('click',addPlayer);document.getElementById('newGameBtn').addEventListener('click',newGame);document.getElementById('officialModeBtn').addEventListener('click',()=>setScoringMode('official'));document.getElementById('alternativeModeBtn').addEventListener('click',()=>setScoringMode('alternative'));document.getElementById('undoBtn').addEventListener('click',undo);document.getElementById('clearBtn').addEventListener('click',clearRound);document.getElementById('finishHandBtn').addEventListener('click',finishHand);
+loadState();renderAll();
+if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));
+</script>
+</body></html>
